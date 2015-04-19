@@ -13,20 +13,11 @@ h1 {
 	display: inline-block;
 }
 
-section {
-	position: relative;
-	height: 700px;
-}
-section *{
-	z-index: 2;
-}
 section.stable {
 	/*background-color: orange;*/
 }
 section .title {
 	text-align: center;
-	position: fixed;
-	width: 100%;
 }
 section h1.title {
 	top: calc(50% - 120px);

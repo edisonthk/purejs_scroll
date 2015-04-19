@@ -4,7 +4,7 @@ var _canvas_style = {
 			position: 'fixed',
 			top: 0,
 			left: 0,
-			zIndex: 1,
+			zIndex: -1,
 		};
 
 for(var key in _canvas_style) {
@@ -41,12 +41,21 @@ var section_imgs = [],
 	max_frame_index,		// Max frame have
 	num_sections,			// Number of section have in this page
 	leading_zero;
+
 section_imgs[0] = [];
 
-var playAnimation = function(section, top, _c) {
+var clearCanvas = function(ctx) {
+	var _c = Content.getAnimator();
+	if(typeof ctx === 'undefined') {
+		ctx = _c.getContext("2d");
+	}
+	
+	ctx.clearRect ( 0 , 0 , _c.width, _c.height );
+}
+
+var playAnimation = function(section, frame_play, _c) {
 	current_section = section;
 	pixel_per_frame = section_height / section_imgs[current_section].length;	
-	var frame_play = parseInt((top % (section_imgs[current_section].length * pixel_per_frame))/pixel_per_frame);
 	
 	if(frame_play >= 0){
 		var ctx = _c.getContext("2d");
@@ -87,8 +96,12 @@ var playAnimation = function(section, top, _c) {
 		}
 
 		// playing frame
-		ctx.clearRect ( 0 , 0 , _c.width, _c.height );
-		ctx.drawImage(section_imgs[current_section][frame_play],offset_left,offset_top,frame_width,frame_height);
+		
+		// console.log(frame_play+" "+section_imgs[current_section].length);
+		if(section_imgs[current_section].length > frame_play && frame_play >= 0) {
+			clearCanvas(ctx);
+			ctx.drawImage(section_imgs[current_section][frame_play],offset_left,offset_top,frame_width,frame_height);	
+		}
 	}
 };
 
@@ -158,6 +171,8 @@ var ScrollingHandler = {
 		max_frame_index = 0;
 		bottom_textboxs = document.getElementsByClassName('bottom');
 
+
+
 		// load image
 		// section 1 image
 		for (var i = 0; i < 42; i++) {
@@ -214,6 +229,7 @@ var ScrollingHandler = {
 		// ctx.fillText('<Flux> playground', _c.width/2,_c.height/2);
 
 	}
+
 };
 
 
@@ -295,18 +311,81 @@ var ScrollDownInstructor = {
 		}
 	},
 };
+
 ScrollDownInstructor.render();
-
 ScrollingHandler.initial();
-ScrollingHandler.forceFireEvent();
 
-var currentTop = 0;
-// interval event
-setInterval(function() {
-	if(currentTop !== window.pageYOffset){
-		currentTop = window.pageYOffset;
-		ScrollingHandler._event(currentTop);
+var scrollingTime = 1000,
+	frames_per_scroll = 30,
+	last_section_index = -1,
+	frame_index = -1,
+ 	isForward = false,
+ 	max_frame_index = [];
+
+onePageScroll(".main", {
+  sectionContainer: "section",
+  loop: false,
+  responsiveFallback: false,
+  updateURL: false,
+  beforeMove: function(index, next_el) {
+  	if(index >= 2) {
+  		document.getElementsByClassName("scroll-down")[0].style.bottom = "-200px";
+  	}else{
+  		document.getElementsByClassName("scroll-down")[0].style.bottom = "50px";
+  	}
+  	var animation_index = 0;
+  	this.intervalId = setInterval(function() {
+  		var section_index = index - 2;
+  		if(section_index > last_section_index) {
+  			// forward
+  			isForward = true;
+  			frame_index = parseInt(section_imgs[section_index].length * animation_index / frames_per_scroll);
+  			playAnimation(section_index ,frame_index, Content.getAnimator());	
+  		}else{
+  			// backward
+  			var section_imgs_length = section_imgs[last_section_index].length;
+  			isForward = false;
+  			frame_index = max_frame_index[last_section_index] - parseInt(section_imgs_length * animation_index / frames_per_scroll);
+  			playAnimation(last_section_index ,frame_index, Content.getAnimator());	
+  		}
+
+  		console.log(frame_index + " " + animation_index);
+  		
+  		animation_index ++;
+
+  	}, scrollingTime/frames_per_scroll);
+  },
+  afterMove: function(index, next_el) {
+
+  	
+  	clearInterval(this.intervalId);
+	if(index == 1) {
+  		clearCanvas();
+  	}
+	last_section_index = index - 2;
+	if(isForward){
+		// forward
+		max_frame_index[last_section_index] = frame_index;	
+	}else{
+		// backward
+		// playAnimation(index - 2 ,0, Content.getAnimator());	
 	}
 	
-}, 1000 / 30);
 
+	console.log(max_frame_index);
+
+  	// checkIfEndBeforeClearInterval(this.intervalId, afterClearIntervalCallback);
+  	// var section_index = index - 2;
+  	
+
+ //  	if(section_index > last_section_index) {
+	// 	// forward
+		
+	// }else{
+	// 	// backward
+	// 	playAnimation(section_index ,0, Content.getAnimator());	
+	// }
+
+	
+  },
+});
